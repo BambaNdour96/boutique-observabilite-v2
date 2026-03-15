@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Paiement — TechShop{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card shadow-sm border-0 rounded-3">
+      <div class="card-body p-4">
+        <h4 class="fw-bold mb-4"><i class="bi bi-lock me-2 text-success"></i>Paiement securise</h4>
+        <form action="/checkout" method="post">
+          <h6 class="fw-semibold text-muted mb-3">INFORMATIONS PERSONNELLES</h6>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Prenom</label>
+              <input type="text" class="form-control" value="John" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Nom</label>
+              <input type="text" class="form-control" value="Doe" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" value="john.doe@example.com" required>
+          </div>
+          <hr class="my-4">
+          <h6 class="fw-semibold text-muted mb-3">INFORMATIONS DE PAIEMENT</h6>
+          <div class="mb-3">
+            <label class="form-label">Numero de carte</label>
+            <input type="text" class="form-control" value="4242 4242 4242 4242" required>
+          </div>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label">Date d expiration</label>
+              <input type="text" class="form-control" value="12/26" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">CVV</label>
+              <input type="text" class="form-control" value="123" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success w-100 btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Confirmer le paiement
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

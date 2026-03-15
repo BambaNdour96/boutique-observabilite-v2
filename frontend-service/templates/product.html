@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}{{product.name}} — TechShop{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">Accueil</a></li>
+    <li class="breadcrumb-item active">{{product.name}}</li>
+  </ol>
+</nav>
+<div class="row g-5">
+  <div class="col-md-5">
+    <img src="/static/images/{{product.image}}" class="img-fluid rounded-3 shadow" alt="{{product.name}}" onerror="this.src='https://placehold.co/500x400?text={{product.name}}'">
+  </div>
+  <div class="col-md-7">
+    <span class="badge bg-secondary mb-2">{{product.category}}</span>
+    <h2 class="fw-bold">{{product.name}}</h2>
+    <p class="text-muted">{{product.description}}</p>
+    <hr>
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <span class="display-6 fw-bold text-primary">{{product.price}} €</span>
+      <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>En stock ({{product.stock}} unites)</span>
+    </div>
+    <form action="/cart/add" method="post">
+      <input type="hidden" name="product_id" value="{{product.id}}">
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-auto">
+          <label class="col-form-label fw-semibold">Quantite</label>
+        </div>
+        <div class="col-auto">
+          <input type="number" name="quantity" value="1" min="1" max="{{product.stock}}" class="form-control" style="width:80px">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="bi bi-cart-plus me-2"></i>Ajouter au panier
+      </button>
+      <a href="/" class="btn btn-outline-secondary btn-lg ms-2">
+        <i class="bi bi-arrow-left me-1"></i>Continuer mes achats
+      </a>
+    </form>
+  </div>
+</div>
+{% endblock %}

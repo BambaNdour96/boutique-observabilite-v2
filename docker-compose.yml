@@ -1,0 +1,184 @@
+version: '3.8'
+
+networks:
+  boutique-net:
+    driver: bridge
+
+volumes:
+  redis-data:
+  postgres-data:
+  prometheus-data:
+  loki-data:
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    networks: [boutique-net]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: boutique
+      POSTGRES_USER: boutique
+      POSTGRES_PASSWORD: boutique123
+    networks: [boutique-net]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U boutique"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── OTel Collector ──────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"
+    networks: [boutique-net]
+    depends_on: [prometheus, loki, jaeger]
+
+  # ── Observability baseline ──────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+      - --enable-feature=exemplar-storage
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [boutique-net]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    container_name: jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    networks: [boutique-net]
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks: [boutique-net]
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [boutique-net]
+    depends_on: [loki]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks: [boutique-net]
+    depends_on: [prometheus, loki, jaeger]
+
+  # ── Microservices ───────────────────────────────────────────
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    environment:
+      - OTLP_ENDPOINT=http://otel-collector:4317
+      - CATALOG_FAILURE=false
+    networks: [boutique-net]
+    depends_on: [otel-collector, postgres]
+    healthcheck:
+      test: ["CMD","python3","-c","import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  cart-service:
+    build: ./cart-service
+    container_name: cart-service
+    environment:
+      - OTLP_ENDPOINT=http://otel-collector:4317
+      - CART_FAILURE=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks: [boutique-net]
+    depends_on: [otel-collector, redis]
+    healthcheck:
+      test: ["CMD","python3","-c","import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    environment:
+      - OTLP_ENDPOINT=http://otel-collector:4317
+      - PAYMENT_FAILURE=false
+      - CART_SERVICE=http://cart-service:5002
+    networks: [boutique-net]
+    depends_on: [otel-collector, cart-service]
+    healthcheck:
+      test: ["CMD","python3","-c","import urllib.request; urllib.request.urlopen('http://localhost:5003/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend-service:
+    build: ./frontend-service
+    container_name: frontend-service
+    environment:
+      - OTLP_ENDPOINT=http://otel-collector:4317
+      - PRODUCT_SERVICE=http://product-service:5001
+      - CART_SERVICE=http://cart-service:5002
+      - ORDER_SERVICE=http://order-service:5003
+    ports:
+      - "5000:5000"
+    networks: [boutique-net]
+    depends_on: [product-service, cart-service, order-service]
+
+  load-generator:
+    build: ./load-generator
+    container_name: load-generator
+    networks: [boutique-net]
+    depends_on: [frontend-service]
+    restart: unless-stopped

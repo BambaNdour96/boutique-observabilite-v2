@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}TechShop — Accueil{% endblock %}
+{% block content %}
+<div class="hero p-5 mb-5 text-center">
+  <h1 class="display-5 fw-bold"><i class="bi bi-lightning-charge-fill me-2"></i>Bienvenue sur TechShop</h1>
+  <p class="lead">Les meilleurs produits tech au meilleur prix. Livraison gratuite des 50 euros.</p>
+  <span class="badge bg-light text-dark fs-6"><i class="bi bi-shield-check me-1"></i>Paiement securise</span>
+  <span class="badge bg-light text-dark fs-6 ms-2"><i class="bi bi-truck me-1"></i>Livraison 24h</span>
+</div>
+<h4 class="mb-4 fw-semibold"><i class="bi bi-grid me-2"></i>Nos produits <span class="text-muted fs-6">({{products|length}} articles)</span></h4>
+<div class="row g-4">
+{% for p in products %}
+<div class="col-6 col-md-4 col-lg-3">
+  <div class="card product-card h-100 shadow-sm">
+    <a href="/product/{{p.id}}">
+      <img src="/static/images/{{p.image}}" class="card-img-top product-img" alt="{{p.name}}" onerror="this.src='https://placehold.co/400x200?text={{p.name}}'">
+    </a>
+    <div class="card-body d-flex flex-column">
+      <span class="badge bg-secondary badge-category mb-2">{{p.category}}</span>
+      <h6 class="card-title fw-semibold">{{p.name}}</h6>
+      <p class="card-text text-muted small flex-grow-1">{{p.description}}</p>
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <span class="fw-bold text-primary fs-5">{{p.price}} €</span>
+        <span class="badge bg-success small"><i class="bi bi-check-circle me-1"></i>En stock</span>
+      </div>
+      <form action="/cart/add" method="post" class="mt-2">
+        <input type="hidden" name="product_id" value="{{p.id}}">
+        <input type="hidden" name="quantity" value="1">
+        <button type="submit" class="btn btn-primary btn-add w-100">
+          <i class="bi bi-cart-plus me-1"></i>Ajouter au panier
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

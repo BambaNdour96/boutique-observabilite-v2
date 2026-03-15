@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Commande confirmee — TechShop{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 text-center">
+    <div class="card shadow-sm border-0 rounded-3 p-5">
+      <div class="display-1 text-success mb-3"><i class="bi bi-check-circle-fill"></i></div>
+      <h2 class="fw-bold text-success">Commande confirmee !</h2>
+      <p class="text-muted mt-2">Merci pour votre achat sur TechShop.</p>
+      <div class="alert alert-success mt-3">
+        <strong>Commande #{{order.order_id}}</strong><br>
+        <small>Un email de confirmation vous a ete envoye.</small>
+      </div>
+      <a href="/" class="btn btn-primary mt-3 btn-lg">
+        <i class="bi bi-shop me-2"></i>Continuer mes achats
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
