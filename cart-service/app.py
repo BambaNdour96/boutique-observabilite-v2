@@ -1,5 +1,6 @@
 import os, time, logging
 from opentelemetry import trace
+from opentelemetry import trace as otel_trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -29,7 +30,27 @@ logger_provider = LoggerProvider(resource=resource)
 logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=OTLP_ENDPOINT, insecure=True)))
 set_logger_provider(logger_provider)
 otel_handler = LoggingHandler(level=logging.DEBUG, logger_provider=logger_provider)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+
+class TraceIdFilter(logging.Filter):
+    def filter(self, record):
+        span = otel_trace.get_current_span()
+        ctx = span.get_span_context()
+        record.trace_id = format(ctx.trace_id, "032x") if ctx and ctx.trace_id else "0" * 32
+        return True
+
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s traceId=%(trace_id)s %(message)s"))
+trace_filter = TraceIdFilter()
+handler.addFilter(trace_filter)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.handlers = []
+root_logger.addHandler(handler)
+for name in ["werkzeug", "flask"]:
+    lg = logging.getLogger(name)
+    lg.handlers = []
+    lg.addHandler(handler)
+    lg.propagate = False
 logger = logging.getLogger(SERVICE_NAME)
 logger.addHandler(otel_handler)
 metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=OTLP_ENDPOINT, insecure=True))
