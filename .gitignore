@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 *.pyo
 setup_*.py
+telegram.env
+alertmanager/alertmanager.yml

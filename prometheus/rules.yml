@@ -1,0 +1,32 @@
+groups:
+  - name: techshop_alerts
+    rules:
+      - alert: PaymentServiceErrors
+        expr: rate(order_errors_total{reason="payment_failure"}[2m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: order-service
+        annotations:
+          summary: "Erreurs de paiement détectées sur order-service"
+          description: "Le service order-service rejette des requêtes de paiement (PAYMENT_FAILURE=true)."
+
+      - alert: CartServiceErrors
+        expr: rate(cart_errors_total[2m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: cart-service
+        annotations:
+          summary: "Erreurs détectées sur cart-service"
+          description: "Le service cart-service ne peut plus accéder à Redis (CART_FAILURE=true)."
+
+      - alert: ProductCatalogErrors
+        expr: rate(product_errors_total{reason="catalog_failure"}[2m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: product-service
+        annotations:
+          summary: "Erreurs de catalogue détectées sur product-service"
+          description: "Le service product-service dépasse le délai de réponse (CATALOG_FAILURE=true)."

@@ -8,6 +8,7 @@ volumes:
   redis-data:
   postgres-data:
   prometheus-data:
+  tempo-data:
   loki-data:
 
 services:
@@ -52,7 +53,7 @@ services:
       - "8888:8888"
       - "8889:8889"
     networks: [boutique-net]
-    depends_on: [prometheus, loki, jaeger]
+    depends_on: [prometheus, loki, tempo]
 
   # ── Observability baseline ──────────────────────────────────
   prometheus:
@@ -66,19 +67,33 @@ services:
       - --web.enable-remote-write-receiver
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules.yml:/etc/prometheus/rules.yml
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     networks: [boutique-net]
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.58
-    container_name: jaeger
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: tempo
+    user: "0:0"
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/tmp/tempo
     ports:
-      - "16686:16686"
-      - "14268:14268"
+      - "3200:3200"
+    networks: [boutique-net]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
     networks: [boutique-net]
 
   loki:
@@ -115,7 +130,7 @@ services:
     ports:
       - "3000:3000"
     networks: [boutique-net]
-    depends_on: [prometheus, loki, jaeger]
+    depends_on: [prometheus, loki, tempo]
 
   # ── Microservices ───────────────────────────────────────────
   product-service:
